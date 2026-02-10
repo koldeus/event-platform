@@ -123,7 +123,7 @@ async function loadEventDetails() {
           try {
             registerError.classList.add("hidden");
             const response = await fetch(
-              `/api/events/${eventId}/register`,
+              `http://mottin.alwaysdata.net:8100/api/events/${eventId}/register`,
               {
                 method: "DELETE",
                 headers: {
