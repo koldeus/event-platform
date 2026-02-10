@@ -2,11 +2,11 @@
   "name": "event-platform",
   "version": "1.0.0",
   "description": "",
-  "main": "Server/server.js",
+  "main": "server/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node Server/server.js",
-    "dev": "nodemon Server/server.js"
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js"
   },
   "keywords": [],
   "author": "",
