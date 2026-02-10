@@ -1,27 +1,19 @@
-// ===== Authentication Module - Noah =====
-// Ce fichier gère toute la logique d'authentification et de session utilisateur
-// Il utilise localStorage pour stocker l'utilisateur connecté côté client
-
 const API_URL = 'https://mottin.alwaysdata.net/api';
 
-// Récupère l'utilisateur actuellement connecté depuis le localStorage - Noah
 function getCurrentUser() {
   const user = localStorage.getItem('currentUser');
   return user ? JSON.parse(user) : null;
 }
 
-// Stocke l'utilisateur connecté dans le localStorage - Noah
 function setCurrentUser(user) {
   localStorage.setItem('currentUser', JSON.stringify(user));
 }
 
-// Déconnecte l'utilisateur et le redirige vers la page d'accueil - Noah
 function logout() {
   localStorage.removeItem('currentUser');
   window.location.href = 'index.html';
 }
 
-// Enregistre un nouvel utilisateur via l'API - Noah
 async function signup(email, password, name) {
   try {
     const response = await fetch(`${API_URL}/auth/signup`, {
@@ -38,7 +30,6 @@ async function signup(email, password, name) {
       throw new Error(data.error || 'Erreur lors de l\'inscription');
     }
 
-    // Sauvegarde l'utilisateur en local après inscription réussie - Noah
     setCurrentUser(data);
     return data;
   } catch (error) {
