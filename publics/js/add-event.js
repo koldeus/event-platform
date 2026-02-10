@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         successMsg.classList.add('hidden');
 
         try {
-            const response = await fetch('/api/events', {
+            const response = await fetch('https://mottin.alwaysdata.net/api/events', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
