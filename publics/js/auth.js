@@ -2,7 +2,7 @@
 // Ce fichier gère toute la logique d'authentification et de session utilisateur
 // Il utilise localStorage pour stocker l'utilisateur connecté côté client
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api';
 
 // Récupère l'utilisateur actuellement connecté depuis le localStorage - Noah
 function getCurrentUser() {

@@ -13,7 +13,7 @@ async function loadEventDetails() {
   }
 
   try {
-    const response = await fetch(`http://localhost:3000/api/events/${eventId}`);
+    const response = await fetch(`/api/events/${eventId}`);
 
     if (!response.ok) {
       throw new Error("Événement non trouvé");
@@ -79,7 +79,7 @@ async function loadEventDetails() {
           try {
             voteError.classList.add("hidden");
             const voteResponse = await fetch(
-              `http://localhost:3000/api/events/${eventId}/vote`,
+              `/api/events/${eventId}/vote`,
               {
                 method: "POST",
                 headers: {
@@ -123,7 +123,7 @@ async function loadEventDetails() {
           try {
             registerError.classList.add("hidden");
             const response = await fetch(
-              `http://localhost:3000/api/events/${eventId}/register`,
+              `/api/events/${eventId}/register`,
               {
                 method: "DELETE",
                 headers: {
@@ -153,7 +153,7 @@ async function loadEventDetails() {
           try {
             registerError.classList.add("hidden");
             const response = await fetch(
-              `http://localhost:3000/api/events/${eventId}/register`,
+              `/api/events/${eventId}/register`,
               {
                 method: "POST",
                 headers: {

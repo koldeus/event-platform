@@ -94,7 +94,7 @@ function attachVoteHandlers() {
       const eventId = button.dataset.eventId;
       try {
         const response = await fetch(
-          `http://localhost:3000/api/events/${eventId}/vote`,
+          `/api/events/${eventId}/vote`,
           {
             method: "POST",
             headers: {
@@ -252,7 +252,7 @@ async function loadCalendar() {
     calendarContainer.classList.add("hidden");
     noEventsMessage.classList.add("hidden");
 
-    const response = await fetch("http://localhost:3000/api/events");
+    const response = await fetch("/api/events");
     allEvents = await response.json();
 
     const weekEnd = new Date(currentWeekStart);
