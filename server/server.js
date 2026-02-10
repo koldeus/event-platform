@@ -5,51 +5,64 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000; 
+const PORT = process.env.PORT || 3000;
+
+/* =======================
+   MIDDLEWARES
+======================= */
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, '../publics')));
 
-const DATA_FILE = path.join(__dirname, 'data', 'events.json');
-const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+/* =======================
+   PATHS DATA
+======================= */
+const DATA_DIR = path.join(__dirname, 'data');
+const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
-async function readEvents() {
+/* =======================
+   UTILS
+======================= */
+async function ensureFiles() {
   try {
-    const data = await fs.readFile(DATA_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    return [];
+    await fs.mkdir(DATA_DIR, { recursive: true });
+
+    try { await fs.access(EVENTS_FILE); }
+    catch { await fs.writeFile(EVENTS_FILE, '[]'); }
+
+    try { await fs.access(USERS_FILE); }
+    catch { await fs.writeFile(USERS_FILE, '[]'); }
+
+  } catch (err) {
+    console.error('Erreur initialisation fichiers:', err);
+    process.exit(1);
   }
 }
 
-async function writeEvents(events) {
-  await fs.writeFile(DATA_FILE, JSON.stringify(events, null, 2));
+async function readJSON(file) {
+  const data = await fs.readFile(file, 'utf8');
+  return JSON.parse(data || '[]');
 }
 
-async function readUsers() {
-  try {
-    const data = await fs.readFile(USERS_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    return [];
-  }
+async function writeJSON(file, data) {
+  await fs.writeFile(file, JSON.stringify(data, null, 2));
 }
 
-async function writeUsers(users) {
-  await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
-}
+/* =======================
+   ROUTER API
+======================= */
+const api = express.Router();
 
-// ===== ROUTES D'AUTHENTIFICATION =====
-
-app.post('/api/auth/signup', async (req, res) => {
+/* ---- AUTH ---- */
+api.post('/auth/signup', async (req, res) => {
   try {
     const { email, password, name } = req.body;
-    const users = await readUsers();
-    
+    const users = await readJSON(USERS_FILE);
+
     if (users.find(u => u.email === email)) {
       return res.status(400).json({ error: 'Email déjà utilisé' });
     }
-    
+
     const newUser = {
       id: Date.now().toString(),
       email,
@@ -57,165 +70,194 @@ app.post('/api/auth/signup', async (req, res) => {
       name,
       createdAt: new Date().toISOString()
     };
-    
+
     users.push(newUser);
-    await writeUsers(users);
-    
-    res.status(201).json({ id: newUser.id, email: newUser.email, name: newUser.name });
-  } catch (error) {
+    await writeJSON(USERS_FILE, users);
+
+    res.status(201).json({
+      id: newUser.id,
+      email: newUser.email,
+      name: newUser.name
+    });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+api.post('/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const users = await readUsers();
-    
-    const user = users.find(u => u.email === email && u.password === password);
-    
+    const users = await readJSON(USERS_FILE);
+
+    const user = users.find(
+      u => u.email === email && u.password === password
+    );
+
     if (!user) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+      return res.status(401).json({ error: 'Identifiants invalides' });
     }
-    
-    res.json({ id: user.id, email: user.email, name: user.name });
-  } catch (error) {
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name
+    });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-// ===== ROUTES ÉVÉNEMENTS =====
-
-app.get('/api/events', async (req, res) => {
+/* ---- EVENTS ---- */
+api.get('/events', async (req, res) => {
   try {
-    const events = await readEvents();
-    const eventsWithCounts = events.map(event => ({
+    const events = await readJSON(EVENTS_FILE);
+    res.json(events.map(e => ({
+      ...e,
+      votes: e.votes || 0,
+      registrations: e.registrations || [],
+      registrationCount: (e.registrations || []).length
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+api.get('/events/:id', async (req, res) => {
+  try {
+    const events = await readJSON(EVENTS_FILE);
+    const event = events.find(e => e.id === req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ error: 'Événement non trouvé' });
+    }
+
+    res.json({
       ...event,
       votes: event.votes || 0,
       registrations: event.registrations || [],
       registrationCount: (event.registrations || []).length
-    }));
-    res.json(eventsWithCounts);
-  } catch (error) {
+    });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.get('/api/events/:id', async (req, res) => {
+api.post('/events', async (req, res) => {
   try {
-    const events = await readEvents();
-    const event = events.find(e => e.id === req.params.id);
-    if (event) {
-      res.json({
-        ...event,
-        votes: event.votes || 0,
-        registrations: event.registrations || [],
-        registrationCount: (event.registrations || []).length
-      });
-    } else {
-      res.status(404).json({ error: 'Événement non trouvé' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
+    const { title, description, date, time, location } = req.body;
+    const events = await readJSON(EVENTS_FILE);
 
-app.post('/api/events', async (req, res) => {
-  try {
-    const { title, description, date, location } = req.body;
-    const events = await readEvents();
-    
     const newEvent = {
       id: Date.now().toString(),
       title,
       description,
       date,
+      time: time || '09:00',
       location,
       votes: 0,
+      registrations: [],
       createdAt: new Date().toISOString()
     };
-    
+
     events.push(newEvent);
-    await writeEvents(events);
+    await writeJSON(EVENTS_FILE, events);
+
     res.status(201).json(newEvent);
-  } catch (error) {
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/events/:id/vote', async (req, res) => {
+api.post('/events/:id/vote', async (req, res) => {
   try {
-    const events = await readEvents();
-    const eventIndex = events.findIndex(e => e.id === req.params.id);
-    
-    if (eventIndex !== -1) {
-      events[eventIndex].votes = (events[eventIndex].votes || 0) + 1;
-      await writeEvents(events);
-      res.json(events[eventIndex]);
-    } else {
-      res.status(404).json({ error: 'Événement non trouvé' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
+    const events = await readJSON(EVENTS_FILE);
+    const event = events.find(e => e.id === req.params.id);
 
-app.post('/api/events/:id/register', async (req, res) => {
-  try {
-    const { userId } = req.body;
-    const events = await readEvents();
-    const eventIndex = events.findIndex(e => e.id === req.params.id);
-    
-    if (eventIndex === -1) {
+    if (!event) {
       return res.status(404).json({ error: 'Événement non trouvé' });
     }
-    
-    if (!events[eventIndex].registrations) {
-      events[eventIndex].registrations = [];
-    }
-    
-    if (events[eventIndex].registrations.find(r => r.userId === userId)) {
-      return res.status(400).json({ error: 'Vous êtes déjà enregistré' });
-    }
-    
-    events[eventIndex].registrations.push({ userId, registeredAt: new Date().toISOString() });
-    await writeEvents(events);
-    
-    res.json({
-      ...events[eventIndex],
-      registrationCount: events[eventIndex].registrations.length
-    });
-  } catch (error) {
+
+    event.votes = (event.votes || 0) + 1;
+    await writeJSON(EVENTS_FILE, events);
+
+    res.json(event);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.post('/api/events/:id/unregister', async (req, res) => {
+api.post('/events/:id/register', async (req, res) => {
   try {
     const { userId } = req.body;
-    const events = await readEvents();
-    const eventIndex = events.findIndex(e => e.id === req.params.id);
-    
-    if (eventIndex === -1) {
+    const events = await readJSON(EVENTS_FILE);
+    const event = events.find(e => e.id === req.params.id);
+
+    if (!event) {
       return res.status(404).json({ error: 'Événement non trouvé' });
     }
-    
-    if (!events[eventIndex].registrations) {
-      events[eventIndex].registrations = [];
+
+    event.registrations ||= [];
+
+    if (event.registrations.find(r => r.userId === userId)) {
+      return res.status(400).json({ error: 'Déjà inscrit' });
     }
-    
-    events[eventIndex].registrations = events[eventIndex].registrations.filter(r => r.userId !== userId);
-    await writeEvents(events);
-    
-    res.json({
-      ...events[eventIndex],
-      registrationCount: events[eventIndex].registrations.length
+
+    event.registrations.push({
+      userId,
+      registeredAt: new Date().toISOString()
     });
-  } catch (error) {
+
+    await writeJSON(EVENTS_FILE, events);
+    res.json({ ...event, registrationCount: event.registrations.length });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+api.post('/events/:id/unregister', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const events = await readJSON(EVENTS_FILE);
+    const event = events.find(e => e.id === req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ error: 'Événement non trouvé' });
+    }
+
+    event.registrations = (event.registrations || []).filter(
+      r => r.userId !== userId
+    );
+
+    await writeJSON(EVENTS_FILE, events);
+    res.json({ ...event, registrationCount: event.registrations.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/* ---- HEALTH ---- */
+api.get('/health', (req, res) => {
+  res.json({ status: 'OK' });
+});
+
+/* =======================
+   MOUNT ROUTER
+======================= */
+app.use('/api', api);
+
+/* =======================
+   START SERVER
+======================= */
+ensureFiles().then(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 API en ligne sur le port ${PORT}`);
+  });
 });

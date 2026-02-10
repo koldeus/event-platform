@@ -43,7 +43,6 @@ function getSameDayEvents(date) {
   });
 }
 
-
 function renderEventsOnGrid() {
   allEvents.forEach((event, idx) => {
     const eventDate = new Date(event.date);
@@ -93,18 +92,15 @@ function attachVoteHandlers() {
 
       const eventId = button.dataset.eventId;
       try {
-        const response = await fetch(
-          `/api/events/${eventId}/vote`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              userId: currentUser.id,
-            }),
+        const response = await fetch(`/api/events/${eventId}/vote`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({
+            userId: currentUser.id,
+          }),
+        });
 
         if (response.ok) {
           loadCalendar();
@@ -252,6 +248,7 @@ async function loadCalendar() {
     calendarContainer.classList.add("hidden");
     noEventsMessage.classList.add("hidden");
 
+    // ✅ CORRECTION : URL sans /api/
     const response = await fetch("/api/events");
     allEvents = await response.json();
 
@@ -305,4 +302,5 @@ document.getElementById("close-panel").addEventListener("click", () => {
 document.getElementById("add-event-day").addEventListener("click", () => {
   window.location.href = `add-event.html?date=${selectedDate.toISOString().split("T")[0]}`;
 });
+
 loadCalendar();

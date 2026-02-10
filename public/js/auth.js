@@ -2,7 +2,7 @@
 // Ce fichier gère toute la logique d'authentification et de session utilisateur
 // Il utilise localStorage pour stocker l'utilisateur connecté côté client
 
-const API_URL = '/api';
+const API_URL = 'https://mottin.alwaysdata.net/api';
 
 // Récupère l'utilisateur actuellement connecté depuis le localStorage - Noah
 function getCurrentUser() {
