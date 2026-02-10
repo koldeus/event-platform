@@ -1,0 +1,89 @@
+[
+  {
+    "id": "1",
+    "title": "Hackathon IA 2026",
+    "description": "24h pour créer une application avec l'IA",
+    "date": "2026-02-10",
+    "time": "9:01",
+    "location": "Tours, Campus Deux-Lions",
+    "votes": [
+      {
+        "userId": "1"
+      },
+      {
+        "userId": "1770712769090"
+      }
+    ],
+    "registrations": [
+      {
+        "userId": "1",
+        "name": "Alice Dupont",
+        "email": "alice.dupont@example.com"
+      },
+      {
+        "userId": "2",
+        "name": "Bob Martin",
+        "email": "bobmartin@gmail.com"
+      },
+      {
+        "userId": "1770712769090",
+        "email": "kenimottin@gmail.com",
+        "name": "Kéni Mottin"
+      }
+    ],
+    "createdBy": "1",
+    "createdAt": "2026-02-01T10:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "title": "Conférence Web3",
+    "description": "Découverte des technologies blockchain",
+    "date": "2026-04-20",
+    "time": "10:20",
+    "location": "Paris, Station F",
+    "votes": [],
+    "registrations": [],
+    "createdBy": "1",
+    "createdAt": "2026-02-05T14:30:00.000Z"
+  },
+  {
+    "id": "1770723135525",
+    "title": "Entretien Stage",
+    "description": "Entretien Stage au lycée Camille claudelle",
+    "date": "2026-02-10",
+    "time": "10:00",
+    "location": "Blois lycée Camille claudelle",
+    "createdBy": "1770712769090",
+    "votes": [
+      {
+        "userId": "1770712769090"
+      }
+    ],
+    "registrations": [],
+    "createdAt": "2026-02-10T11:32:15.525Z"
+  },
+  {
+    "id": "1770723204984",
+    "title": "Evenement . fr",
+    "description": "Evenement . fr",
+    "date": "2026-02-16",
+    "time": "14:33",
+    "location": "Amboise",
+    "createdBy": "1770712769090",
+    "votes": [],
+    "registrations": [],
+    "createdAt": "2026-02-10T11:33:24.984Z"
+  },
+  {
+    "id": "1770724417487",
+    "title": "gnhggh;y",
+    "description": "dykf;yf  f",
+    "date": "2026-02-18",
+    "time": "12:53",
+    "location": "Blois lycée Camille claudelle",
+    "createdBy": "1770712769090",
+    "votes": [],
+    "registrations": [],
+    "createdAt": "2026-02-10T11:53:37.488Z"
+  }
+]

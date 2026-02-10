@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Agenda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="js/auth.js"></script>
+</head>
+<body class="bg-slate-900">
+    <header class="bg-slate-950 text-white shadow-lg border-b border-slate-700">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-lg sm:text-xl md:text-2xl font-bold flex items-center gap-2">
+                    <i class="bi bi-calendar-event text-lg sm:text-xl md:text-2xl"></i> Mon Agenda
+                </h1>
+                <div class="flex items-center gap-2 sm:gap-4">
+                    <a href="add-event.html" 
+                       class="bg-slate-700 text-white px-2 sm:px-3 md:px-4 py-1 sm:py-2 text-xs sm:text-sm md:text-base rounded-lg font-semibold hover:bg-slate-600 transition flex items-center gap-1 sm:gap-2">
+                        <i class="bi bi-plus-lg"></i> <span class="hidden sm:inline">Ajouter</span>
+                    </a>
+                    <div id="auth-container"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-8xl mx-auto px-4 py-6">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 mb-6 bg-slate-800 p-3 sm:p-4 rounded-lg border border-slate-700">
+            <button id="prev-week" class="w-full sm:w-auto bg-slate-700 text-white px-3 sm:px-4 py-2 sm:py-2 text-xs sm:text-sm md:text-base rounded hover:bg-slate-600 transition flex items-center justify-center gap-1 sm:gap-2">
+                <i class="bi bi-chevron-left"></i> <span class="hidden sm:inline">Précédente</span>
+            </button>
+            <div class="text-center flex-1 min-w-0">
+                <h2 id="week-title" class="text-sm sm:text-base md:text-lg font-bold text-white break-words"></h2>
+                <button id="today-btn" class="text-xs sm:text-sm text-slate-300 hover:text-white mt-1 transition">Aujourd'hui</button>
+            </div>
+            <button id="next-week" class="w-full sm:w-auto bg-slate-700 text-white px-3 sm:px-4 py-2 sm:py-2 text-xs sm:text-sm md:text-base rounded hover:bg-slate-600 transition flex items-center justify-center gap-1 sm:gap-2">
+                <span class="hidden sm:inline">Suivante</span> <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+
+        <div id="loading" class="text-center py-8 sm:py-12">
+            <p class="text-slate-300 text-sm sm:text-base md:text-lg">Chargement du calendrier...</p>
+        </div>
+
+        <div id="calendar-container" class="hidden flex flex-col lg:flex-row gap-6">
+            <div class="flex-1 min-w-0 overflow-x-auto bg-slate-800 rounded-lg border border-slate-700">
+                <div id="calendar-grid" class="min-w-max"></div>
+            </div>
+
+            <div class="w-full lg:w-80 bg-slate-800 rounded-lg border border-slate-700 p-6 h-fit lg:sticky lg:top-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="selected-day-title" class="text-xl font-bold text-white"></h3>
+                    <button id="close-panel" class="lg:hidden text-slate-400 hover:text-white"><i class="bi bi-x-lg text-2xl"></i></button>
+                </div>
+                <button id="add-event-day" class="w-full bg-slate-700 text-white py-2 rounded font-semibold hover:bg-slate-600 transition mb-4 flex items-center justify-center gap-2">
+                    <i class="bi bi-plus-lg"></i> Ajouter un événement
+                </button>
+                <div id="day-events-list" class="space-y-4 max-h-96 lg:max-h-none overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <div id="no-events" class="hidden text-center py-8 sm:py-12">
+            <p class="text-slate-300 text-sm sm:text-base md:text-lg">Aucun événement pour cette semaine</p>
+        </div>
+    </main>
+
+    <style>
+        #day-events-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        #day-events-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #day-events-list::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        #day-events-list::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        
+        #calendar-grid::-webkit-scrollbar {
+            height: 6px;
+        }
+        #calendar-grid::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #calendar-grid::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        #calendar-grid::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
