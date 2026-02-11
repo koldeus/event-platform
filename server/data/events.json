@@ -54,11 +54,7 @@
     "time": "10:00",
     "location": "Blois lycée Camille claudelle",
     "createdBy": "1770712769090",
-    "votes": [
-      {
-        "userId": "1770712769090"
-      }
-    ],
+    "votes": [],
     "registrations": [],
     "createdAt": "2026-02-10T11:32:15.525Z"
   },
@@ -85,5 +81,16 @@
     "votes": [],
     "registrations": [],
     "createdAt": "2026-02-10T11:53:37.488Z"
+  },
+  {
+    "id": "1770813631906",
+    "title": "gferzsgz ",
+    "description": " affa fea ",
+    "date": "2026-02-11",
+    "time": "15:40",
+    "location": " fea fea",
+    "votes": [],
+    "registrations": [],
+    "createdAt": "2026-02-11T12:40:31.906Z"
   }
 ]

@@ -7,13 +7,13 @@ async function loadEventDetails() {
   const errorMessage = document.getElementById("error-message");
 
   if (!eventId) {
-    loading.classList.add("hidden");
-    errorMessage.classList.remove("hidden");
+    if (loading) loading.classList.add("hidden");
+    if (errorMessage) errorMessage.classList.remove("hidden");
     return;
   }
 
   try {
-    const response = await fetch(`https://mottin.alwaysdata.net/api/events/${eventId}`);
+    const response = await fetch(`/api/events/${eventId}`);
 
     if (!response.ok) {
       throw new Error("Événement non trouvé");
@@ -21,38 +21,59 @@ async function loadEventDetails() {
 
     const event = await response.json();
 
-    loading.classList.add("hidden");
-    errorMessage.classList.add("hidden");
-    eventContent.classList.remove("hidden");
+    if (loading) loading.classList.add("hidden");
+    if (errorMessage) errorMessage.classList.add("hidden");
+    if (eventContent) eventContent.classList.remove("hidden");
 
-    document.getElementById("event-title").textContent = event.title;
-    document.getElementById("event-description").textContent =
-      event.description;
+    // Mise à jour des informations de l'événement avec vérification
+    const eventTitle = document.getElementById("event-title");
+    if (eventTitle) eventTitle.textContent = event.title;
+
+    const eventDescription = document.getElementById("event-description");
+    if (eventDescription) eventDescription.textContent = event.description;
 
     const eventDate = new Date(event.date).toLocaleDateString("fr-FR", {
       day: "numeric",
       month: "long",
       year: "numeric",
     });
-    document.getElementById("event-date").textContent = eventDate;
-    document.getElementById("event-location").textContent = event.location;
-    document.getElementById("event-votes").textContent = event.votes
-      ? event.votes.length
-      : 0;
+    const eventDateEl = document.getElementById("event-date");
+    if (eventDateEl) eventDateEl.textContent = eventDate;
+
+    const eventLocation = document.getElementById("event-location");
+    if (eventLocation) eventLocation.textContent = event.location;
+
+    const eventVotes = document.getElementById("event-votes");
+    if (eventVotes) {
+      const votesCount = Array.isArray(event.votes) ? event.votes.length : 0;
+      eventVotes.textContent = votesCount;
+    }
 
     const registrationCount = document.getElementById("registration-count");
-    registrationCount.textContent = event.registrations
-      ? event.registrations.length
-      : 0;
+    if (registrationCount) {
+      const regCount = Array.isArray(event.registrations)
+        ? event.registrations.length
+        : 0;
+      registrationCount.textContent = regCount;
+    }
 
     const registrationsList = document.getElementById("registrations-list");
-    if (event.registrations && event.registrations.length > 0) {
+    if (
+      registrationsList &&
+      event.registrations &&
+      event.registrations.length > 0
+    ) {
       registrationsList.innerHTML = event.registrations
-        .map((r) => `<div class="text-slate-300 text-sm flex items-center gap-2">
+        .map(
+          (r) => `<div class="text-slate-300 text-sm flex items-center gap-2">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-            ${r.name}
-        </div>`)
+            ${r.name || r.email || "Utilisateur"}
+        </div>`,
+        )
         .join("");
+    } else if (registrationsList) {
+      registrationsList.innerHTML =
+        '<p class="text-slate-400 text-sm">Aucune inscription pour le moment</p>';
     }
 
     const currentUser = getCurrentUser();
@@ -62,25 +83,38 @@ async function loadEventDetails() {
     const registerError = document.getElementById("register-error");
 
     if (!currentUser) {
-      voteBtn.disabled = true;
-      voteBtn.innerHTML = '<svg class="inline w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 10.5a1.5 1.5 0 113 0v-6a1.5 1.5 0 11-3 0v6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z"/></svg> Connectez-vous pour voter';
-      registerBtn.disabled = true;
-      registerBtn.innerHTML = '<i class="bi bi-pencil"></i> Connectez-vous pour vous inscrire';
-    } else {
-      const hasVoted =
-        event.votes && event.votes.some((v) => v.userId === currentUser.id);
-      if (hasVoted) {
+      if (voteBtn) {
         voteBtn.disabled = true;
-        voteBtn.classList.add("bg-green-600", "hover:bg-green-700");
-        voteBtn.classList.remove("bg-slate-700", "hover:bg-slate-600");
-        voteBtn.innerHTML = '<i class="bi bi-check-lg"></i> Merci pour votre vote!';
-      } else {
-        voteBtn.addEventListener("click", async () => {
-          try {
-            voteError.classList.add("hidden");
-            const voteResponse = await fetch(
-              `https://mottin.alwaysdata.net/api/events/${eventId}/vote`,
-              {
+        voteBtn.innerHTML =
+          '<svg class="inline w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 10.5a1.5 1.5 0 113 0v-6a1.5 1.5 0 11-3 0v6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z"/></svg> Connectez-vous pour voter';
+      }
+      if (registerBtn) {
+        registerBtn.disabled = true;
+        registerBtn.innerHTML =
+          '<i class="bi bi-pencil"></i> Connectez-vous pour vous inscrire';
+      }
+    } else {
+      // Gérer le vote
+      if (voteBtn) {
+        const hasVoted =
+          Array.isArray(event.votes) &&
+          event.votes.some((v) => v.userId === currentUser.id);
+        if (hasVoted) {
+          voteBtn.disabled = true;
+          voteBtn.classList.add("bg-green-600", "hover:bg-green-700");
+          voteBtn.classList.remove(
+            "bg-slate-700",
+            "hover:bg-slate-600",
+            "bg-indigo-600",
+            "hover:bg-indigo-700",
+          );
+          voteBtn.innerHTML =
+            '<i class="bi bi-check-lg"></i> Merci pour votre vote!';
+        } else {
+          voteBtn.addEventListener("click", async () => {
+            try {
+              if (voteError) voteError.classList.add("hidden");
+              const voteResponse = await fetch(`/api/events/${eventId}/vote`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -88,73 +122,103 @@ async function loadEventDetails() {
                 body: JSON.stringify({
                   userId: currentUser.id,
                 }),
-              },
-            );
+              });
 
-            if (!voteResponse.ok) {
-              const error = await voteResponse.json();
-              throw new Error(error.error);
+              if (!voteResponse.ok) {
+                const error = await voteResponse.json();
+                throw new Error(error.error || "Erreur lors du vote");
+              }
+
+              const updatedEvent = await voteResponse.json();
+              const eventVotesEl = document.getElementById("event-votes");
+              if (eventVotesEl) {
+                const votesCount = Array.isArray(updatedEvent.votes)
+                  ? updatedEvent.votes.length
+                  : 0;
+                eventVotesEl.textContent = votesCount;
+              }
+
+              voteBtn.disabled = true;
+              voteBtn.classList.add("bg-green-600", "hover:bg-green-700");
+              voteBtn.classList.remove("bg-indigo-600", "hover:bg-indigo-700");
+              voteBtn.innerHTML =
+                '<i class="bi bi-check-lg"></i> Merci pour votre vote!';
+            } catch (error) {
+              console.error("Erreur:", error);
+              if (voteError) {
+                voteError.textContent = error.message;
+                voteError.classList.remove("hidden");
+              }
             }
-
-            const updatedEvent = await voteResponse.json();
-            document.getElementById("event-votes").textContent =
-              updatedEvent.votes ? updatedEvent.votes.length : 0;
-            voteBtn.disabled = true;
-            voteBtn.classList.add("bg-green-600", "hover:bg-green-700");
-            voteBtn.classList.remove("bg-indigo-600", "hover:bg-indigo-700");
-            voteBtn.innerHTML = '<i class="bi bi-check-lg"></i> Merci pour votre vote!';
-          } catch (error) {
-            console.error("Erreur:", error);
-            voteError.textContent = error.message;
-            voteError.classList.remove("hidden");
-          }
-        });
+          });
+        }
       }
 
-      const isRegistered =
-        event.registrations &&
-        event.registrations.some((r) => r.userId === currentUser.id);
-      if (isRegistered) {
-        registerBtn.classList.add("bg-red-600", "hover:bg-red-700");
-        registerBtn.classList.remove("bg-slate-700", "hover:bg-slate-600");
-        registerBtn.innerHTML = '<i class="bi bi-check-lg"></i> Inscrit - Cliquez pour vous désinscrire';
+      // Gérer l'inscription
+      if (registerBtn) {
+        const isRegistered =
+          Array.isArray(event.registrations) &&
+          event.registrations.some((r) => r.userId === currentUser.id);
 
-        registerBtn.addEventListener("click", async () => {
-          try {
-            registerError.classList.add("hidden");
-            const response = await fetch(
-              `http://mottin.alwaysdata.net:8100https://mottin.alwaysdata.net/api/events/${eventId}/register`,
-              {
-                method: "DELETE",
-                headers: {
-                  "Content-Type": "application/json",
+        if (isRegistered) {
+          registerBtn.classList.add("bg-red-600", "hover:bg-red-700");
+          registerBtn.classList.remove(
+            "bg-slate-700",
+            "hover:bg-slate-600",
+            "bg-green-600",
+            "hover:bg-green-700",
+          );
+          registerBtn.innerHTML = '<i class="bi bi-x-lg"></i> Se désinscrire';
+
+          const newRegisterBtn = registerBtn.cloneNode(true);
+          registerBtn.parentNode.replaceChild(newRegisterBtn, registerBtn);
+          newRegisterBtn.addEventListener("click", async () => {
+            try {
+              if (registerError) registerError.classList.add("hidden");
+              const response = await fetch(
+                `/api/events/${eventId}/unregister`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    userId: currentUser.id,
+                  }),
                 },
-                body: JSON.stringify({
-                  userId: currentUser.id,
-                }),
-              },
-            );
+              );
 
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.error);
+              if (!response.ok) {
+                const error = await response.json();
+                throw new Error(
+                  error.error || "Erreur lors de la désinscription",
+                );
+              }
+
+              // Recharger les détails de l'événement
+              loadEventDetails();
+            } catch (error) {
+              console.error("Erreur:", error);
+              if (registerError) {
+                registerError.textContent = error.message;
+                registerError.classList.remove("hidden");
+              }
             }
+          });
+        } else {
+          registerBtn.classList.add("bg-green-600", "hover:bg-green-700");
+          registerBtn.classList.remove(
+            "bg-red-600",
+            "hover:bg-red-700",
+            "bg-slate-700",
+            "hover:bg-slate-600",
+          );
+          registerBtn.innerHTML = '<i class="bi bi-pencil"></i> S\'inscrire';
 
-            const updatedEvent = await response.json();
-            loadEventDetails(); 
-          } catch (error) {
-            console.error("Erreur:", error);
-            registerError.textContent = error.message;
-            registerError.classList.remove("hidden");
-          }
-        });
-      } else {
-        registerBtn.addEventListener("click", async () => {
-          try {
-            registerError.classList.add("hidden");
-            const response = await fetch(
-              `https://mottin.alwaysdata.net/api/events/${eventId}/register`,
-              {
+          registerBtn.addEventListener("click", async () => {
+            try {
+              if (registerError) registerError.classList.add("hidden");
+              const response = await fetch(`/api/events/${eventId}/register`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -164,41 +228,35 @@ async function loadEventDetails() {
                   name: currentUser.name,
                   email: currentUser.email,
                 }),
-              },
-            );
+              });
 
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.error);
+              if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Erreur lors de l'inscription");
+              }
+
+              // Recharger les détails de l'événement
+              loadEventDetails();
+            } catch (error) {
+              console.error("Erreur:", error);
+              if (registerError) {
+                registerError.textContent = error.message;
+                registerError.classList.remove("hidden");
+              }
             }
-
-            const updatedEvent = await response.json();
-            document.getElementById("registration-count").textContent =
-              updatedEvent.registrations
-                ? updatedEvent.registrations.length
-                : 0;
-
-            registerBtn.classList.add("bg-red-600", "hover:bg-red-700");
-            registerBtn.classList.remove("bg-green-600", "hover:bg-green-700");
-            registerBtn.innerHTML =
-              '<i class="bi bi-check-lg"></i> Inscrit - Cliquez pour vous désinscrire';
-
-            loadEventDetails();
-          } catch (error) {
-            console.error("Erreur:", error);
-            registerError.textContent = error.message;
-            registerError.classList.remove("hidden");
-          }
-        });
+          });
+        }
       }
     }
   } catch (error) {
     console.error("Erreur:", error);
-    loading.classList.add("hidden");
-    eventContent.classList.add("hidden");
-    errorMessage.classList.remove("hidden");
-    errorMessage.textContent =
-      error.message || "Erreur lors du chargement de l'événement";
+    if (loading) loading.classList.add("hidden");
+    if (eventContent) eventContent.classList.add("hidden");
+    if (errorMessage) {
+      errorMessage.classList.remove("hidden");
+      errorMessage.textContent =
+        error.message || "Erreur lors du chargement de l'événement";
+    }
   }
 }
 

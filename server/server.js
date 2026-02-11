@@ -7,22 +7,14 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* =======================
-   MIDDLEWARES
-======================= */
+
 app.use(cors());
 app.use(bodyParser.json());
 
-/* =======================
-   PATHS DATA
-======================= */
 const DATA_DIR = path.join(__dirname, "data");
 const EVENTS_FILE = path.join(DATA_DIR, "events.json");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 
-/* =======================
-   UTILS
-======================= */
 async function ensureFiles() {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
@@ -53,12 +45,24 @@ async function writeJSON(file, data) {
   await fs.writeFile(file, JSON.stringify(data, null, 2));
 }
 
-/* =======================
-   ROUTER API
-======================= */
+function repairEventData(event) {
+  if (!Array.isArray(event.votes)) {
+    console.warn(`Réparation des votes pour l'événement ${event.id}`);
+    event.votes = [];
+  }
+
+  if (!Array.isArray(event.registrations)) {
+    console.warn(
+      `Réparation des registrations pour l'événement ${event.id}`,
+    );
+    event.registrations = [];
+  }
+
+  return event;
+}
+
 const api = express.Router();
 
-/* ---- AUTH ---- */
 api.post("/auth/signup", async (req, res) => {
   try {
     const { email, password, name } = req.body;
@@ -114,17 +118,17 @@ api.post("/auth/login", async (req, res) => {
   }
 });
 
-/* ---- EVENTS ---- */
 api.get("/events", async (req, res) => {
   try {
     const events = await readJSON(EVENTS_FILE);
     res.json(
-      events.map((e) => ({
-        ...e,
-        votes: e.votes || 0,
-        registrations: e.registrations || [],
-        registrationCount: (e.registrations || []).length,
-      })),
+      events.map((e) => {
+        const repaired = repairEventData(e);
+        return {
+          ...repaired,
+          registrationCount: repaired.registrations.length,
+        };
+      }),
     );
   } catch (err) {
     console.error(err);
@@ -141,11 +145,10 @@ api.get("/events/:id", async (req, res) => {
       return res.status(404).json({ error: "Événement non trouvé" });
     }
 
+    const repaired = repairEventData(event);
     res.json({
-      ...event,
-      votes: event.votes || 0,
-      registrations: event.registrations || [],
-      registrationCount: (event.registrations || []).length,
+      ...repaired,
+      registrationCount: repaired.registrations.length,
     });
   } catch (err) {
     console.error(err);
@@ -155,7 +158,7 @@ api.get("/events/:id", async (req, res) => {
 
 api.post("/events", async (req, res) => {
   try {
-    const { title, description, date, time, location } = req.body;
+    const { title, description, date, time, location, createdBy } = req.body;
     const events = await readJSON(EVENTS_FILE);
 
     const newEvent = {
@@ -165,7 +168,8 @@ api.post("/events", async (req, res) => {
       date,
       time: time || "09:00",
       location,
-      votes: 0,
+      createdBy,
+      votes: [],
       registrations: [],
       createdAt: new Date().toISOString(),
     };
@@ -182,45 +186,83 @@ api.post("/events", async (req, res) => {
 
 api.post("/events/:id/vote", async (req, res) => {
   try {
-    const events = await readJSON(EVENTS_FILE);
-    const event = events.find((e) => e.id === req.params.id);
+    const { userId } = req.body;
 
-    if (!event) {
+    if (!userId) {
+      return res.status(400).json({ error: "userId requis" });
+    }
+
+    const events = await readJSON(EVENTS_FILE);
+    const eventIndex = events.findIndex((e) => e.id === req.params.id);
+
+    if (eventIndex === -1) {
       return res.status(404).json({ error: "Événement non trouvé" });
     }
 
-    event.votes = (event.votes || 0) + 1;
+    const event = repairEventData(events[eventIndex]);
+
+    if (event.votes.some((v) => v.userId === userId)) {
+      return res
+        .status(400)
+        .json({ error: "Vous avez déjà voté pour cet événement" });
+    }
+
+    event.votes.push({ userId });
+
+    events[eventIndex] = event;
+
+    console.log(
+      `Vote ajouté pour l'événement ${event.id} par l'utilisateur ${userId}`,
+    );
+    console.log(`   Votes actuels:`, JSON.stringify(event.votes));
+
     await writeJSON(EVENTS_FILE, events);
 
-    res.json(event);
+    res.json({
+      ...event,
+      registrationCount: event.registrations.length,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Erreur lors du vote:", err);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
 api.post("/events/:id/register", async (req, res) => {
   try {
-    const { userId } = req.body;
-    const events = await readJSON(EVENTS_FILE);
-    const event = events.find((e) => e.id === req.params.id);
+    const { userId, name, email } = req.body;
 
-    if (!event) {
+    if (!userId) {
+      return res.status(400).json({ error: "userId requis" });
+    }
+
+    const events = await readJSON(EVENTS_FILE);
+    const eventIndex = events.findIndex((e) => e.id === req.params.id);
+
+    if (eventIndex === -1) {
       return res.status(404).json({ error: "Événement non trouvé" });
     }
 
-    event.registrations ||= [];
+    const event = repairEventData(events[eventIndex]);
 
-    if (event.registrations.find((r) => r.userId === userId)) {
+    if (event.registrations.some((r) => r.userId === userId)) {
       return res.status(400).json({ error: "Déjà inscrit" });
     }
 
     event.registrations.push({
       userId,
+      name,
+      email,
       registeredAt: new Date().toISOString(),
     });
 
+    events[eventIndex] = event;
     await writeJSON(EVENTS_FILE, events);
+
+    console.log(
+      `Inscription ajoutée pour l'événement ${event.id} par ${name || email || userId}`,
+    );
+
     res.json({ ...event, registrationCount: event.registrations.length });
   } catch (err) {
     console.error(err);
@@ -232,17 +274,21 @@ api.post("/events/:id/unregister", async (req, res) => {
   try {
     const { userId } = req.body;
     const events = await readJSON(EVENTS_FILE);
-    const event = events.find((e) => e.id === req.params.id);
+    const eventIndex = events.findIndex((e) => e.id === req.params.id);
 
-    if (!event) {
+    if (eventIndex === -1) {
       return res.status(404).json({ error: "Événement non trouvé" });
     }
 
-    event.registrations = (event.registrations || []).filter(
+    const event = repairEventData(events[eventIndex]);
+
+    event.registrations = event.registrations.filter(
       (r) => r.userId !== userId,
     );
 
+    events[eventIndex] = event;
     await writeJSON(EVENTS_FILE, events);
+
     res.json({ ...event, registrationCount: event.registrations.length });
   } catch (err) {
     console.error(err);
@@ -250,31 +296,40 @@ api.post("/events/:id/unregister", async (req, res) => {
   }
 });
 
-/* ---- HEALTH ---- */
+api.post("/admin/repair", async (req, res) => {
+  try {
+    const events = await readJSON(EVENTS_FILE);
+    const repairedEvents = events.map(repairEventData);
+    await writeJSON(EVENTS_FILE, repairedEvents);
+
+    res.json({
+      message: "Données réparées avec succès",
+      count: repairedEvents.length,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 api.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
-/* =======================
-   MOUNT ROUTER
-======================= */
 app.use("/api", api);
 
-/* =======================
-   START SERVER
-======================= */
 ensureFiles().then(() => {
   const PORT = process.env.PORT || 3000;
-  const IP = process.env.IP || "::"; 
+  const IP = process.env.IP || "::";
 
   const server = app.listen(PORT, IP, () => {
     console.log(`🚀 SERVEUR ACTIF sur [${IP}]:${PORT}`);
   });
 
-  server.on('error', (err) => {
-    console.error('ERREUR SERVEUR :', err.message);
+  server.on("error", (err) => {
+    console.error("ERREUR SERVEUR :", err.message);
     if (IP !== "0.0.0.0") {
-        app.listen(PORT, "0.0.0.0");
+      app.listen(PORT, "0.0.0.0");
     }
   });
 });

@@ -1,4 +1,4 @@
-const API_URL = 'https://mottin.alwaysdata.net/api';
+const API_URL = '/api';
 
 function getCurrentUser() {
   const user = localStorage.getItem('currentUser');

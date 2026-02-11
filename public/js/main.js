@@ -84,6 +84,7 @@ function attachVoteHandlers() {
       e.preventDefault();
 
       const currentUser = getCurrentUser();
+      console.log("Utilisateur actuel:", currentUser.id);
       if (!currentUser) {
         alert("Veuillez vous connecter pour voter");
         window.location.href = "login.html";
@@ -163,7 +164,7 @@ function selectDate(date) {
               </button>
               <button class="vote-btn text-xs px-2 py-1 bg-slate-900 rounded hover:bg-slate-950 transition flex items-center gap-1" data-event-id="${event.id}">
                 <i class="bi bi-hand-thumbs-up"></i>
-                ${event.votes ? event.votes.length : 0}
+                ${event.votes.length ? event.votes.length : 0}
               </button>
             </div>
           </div>
@@ -248,7 +249,6 @@ async function loadCalendar() {
     calendarContainer.classList.add("hidden");
     noEventsMessage.classList.add("hidden");
 
-    // ✅ CORRECTION : URL sans /api/
     const response = await fetch("/api/events");
     allEvents = await response.json();
 
