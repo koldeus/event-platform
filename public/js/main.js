@@ -1,3 +1,5 @@
+// Développé par Keni Mottin
+
 let currentWeekStart = getMonday(new Date());
 let selectedDate = new Date();
 let allEvents = [];
@@ -84,16 +86,16 @@ function attachVoteHandlers() {
       e.preventDefault();
 
       const currentUser = getCurrentUser();
-      console.log("Utilisateur actuel:", currentUser.id);
       if (!currentUser) {
         alert("Veuillez vous connecter pour voter");
         window.location.href = "login.html";
         return;
       }
+      console.log("Utilisateur actuel:", currentUser.id);
 
       const eventId = button.dataset.eventId;
       try {
-        const response = await fetch(`/api/events/${eventId}/vote`, {
+        const response = await fetch(apiUrl(`/api/events/${eventId}/vote`), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -249,7 +251,7 @@ async function loadCalendar() {
     calendarContainer.classList.add("hidden");
     noEventsMessage.classList.add("hidden");
 
-    const response = await fetch("/api/events");
+    const response = await fetch(apiUrl("/api/events"));
     allEvents = await response.json();
 
     const weekEnd = new Date(currentWeekStart);

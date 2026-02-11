@@ -1,3 +1,4 @@
+//Developpé par Noah Bouzique
 document.getElementById('signup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('name').value;

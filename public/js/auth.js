@@ -16,7 +16,7 @@ function logout() {
 
 async function signup(email, password, name) {
   try {
-    const response = await fetch(`${API_URL}/auth/signup`, {
+    const response = await fetch(apiUrl(`${API_URL}/auth/signup`), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -40,7 +40,7 @@ async function signup(email, password, name) {
 
 async function login(email, password) {
   try {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const response = await fetch(apiUrl(`${API_URL}/auth/login`), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

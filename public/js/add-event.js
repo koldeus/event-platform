@@ -1,3 +1,6 @@
+// Développé par Keni Mottin
+
+
 document.addEventListener("DOMContentLoaded", () => {
   const currentUser = getCurrentUser();
 
@@ -17,30 +20,28 @@ document.addEventListener("DOMContentLoaded", () => {
     .addEventListener("submit", async (e) => {
       e.preventDefault();
 
+      const errorMsg = document.getElementById("error-message");
+      const successMsg = document.getElementById("success-message");
+
       const title = document.getElementById("title").value;
       const description = document.getElementById("description").value;
       const date = document.getElementById("date").value;
       const time = document.getElementById("time").value;
-
-      const timeInput = document.getElementById("time").value;
-
-      if (timeInput < "08:00" || timeInput > "17:00") {
-        errorMsg.textContent =
-          "L'heure doit être comprise entre 08:00 et 17:00.";
-        errorMsg.classList.remove("hidden");
-        return;
-      }
-
       const location = document.getElementById("location").value;
 
-      const errorMsg = document.getElementById("error-message");
-      const successMsg = document.getElementById("success-message");
+      if (time < "08:00" || time > "17:59") {
+        errorMsg.textContent =
+          "L'heure doit être comprise entre 08:00 et 17:59.";
+        errorMsg.classList.remove("hidden");
+        successMsg.classList.add("hidden");
+        return;
+      }
 
       errorMsg.classList.add("hidden");
       successMsg.classList.add("hidden");
 
       try {
-        const response = await fetch("/api/events", {
+        const response = await fetch(apiUrl("/api/events"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

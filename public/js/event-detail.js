@@ -1,3 +1,4 @@
+//Developpé par Noah Bouzique
 async function loadEventDetails() {
   const urlParams = new URLSearchParams(window.location.search);
   const eventId = urlParams.get("id");
@@ -13,7 +14,7 @@ async function loadEventDetails() {
   }
 
   try {
-    const response = await fetch(`/api/events/${eventId}`);
+    const response = await fetch(apiUrl(`/api/events/${eventId}`));
 
     if (!response.ok) {
       throw new Error("Événement non trouvé");
@@ -25,7 +26,6 @@ async function loadEventDetails() {
     if (errorMessage) errorMessage.classList.add("hidden");
     if (eventContent) eventContent.classList.remove("hidden");
 
-    // Mise à jour des informations de l'événement avec vérification
     const eventTitle = document.getElementById("event-title");
     if (eventTitle) eventTitle.textContent = event.title;
 
@@ -94,7 +94,6 @@ async function loadEventDetails() {
           '<i class="bi bi-pencil"></i> Connectez-vous pour vous inscrire';
       }
     } else {
-      // Gérer le vote
       if (voteBtn) {
         const hasVoted =
           Array.isArray(event.votes) &&
@@ -111,18 +110,24 @@ async function loadEventDetails() {
           voteBtn.innerHTML =
             '<i class="bi bi-check-lg"></i> Merci pour votre vote!';
         } else {
-          voteBtn.addEventListener("click", async () => {
+          const newVoteBtn = voteBtn.cloneNode(true);
+          voteBtn.parentNode.replaceChild(newVoteBtn, voteBtn);
+
+          newVoteBtn.addEventListener("click", async () => {
             try {
               if (voteError) voteError.classList.add("hidden");
-              const voteResponse = await fetch(`/api/events/${eventId}/vote`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
+              const voteResponse = await fetch(
+                apiUrl(`/api/events/${eventId}/vote`),
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    userId: currentUser.id,
+                  }),
                 },
-                body: JSON.stringify({
-                  userId: currentUser.id,
-                }),
-              });
+              );
 
               if (!voteResponse.ok) {
                 const error = await voteResponse.json();
@@ -138,10 +143,13 @@ async function loadEventDetails() {
                 eventVotesEl.textContent = votesCount;
               }
 
-              voteBtn.disabled = true;
-              voteBtn.classList.add("bg-green-600", "hover:bg-green-700");
-              voteBtn.classList.remove("bg-indigo-600", "hover:bg-indigo-700");
-              voteBtn.innerHTML =
+              newVoteBtn.disabled = true;
+              newVoteBtn.classList.add("bg-green-600", "hover:bg-green-700");
+              newVoteBtn.classList.remove(
+                "bg-indigo-600",
+                "hover:bg-indigo-700",
+              );
+              newVoteBtn.innerHTML =
                 '<i class="bi bi-check-lg"></i> Merci pour votre vote!';
             } catch (error) {
               console.error("Erreur:", error);
@@ -154,29 +162,31 @@ async function loadEventDetails() {
         }
       }
 
-      // Gérer l'inscription
       if (registerBtn) {
         const isRegistered =
           Array.isArray(event.registrations) &&
           event.registrations.some((r) => r.userId === currentUser.id);
 
+        const newRegisterBtn = registerBtn.cloneNode(true);
+        registerBtn.parentNode.replaceChild(newRegisterBtn, registerBtn);
+
         if (isRegistered) {
-          registerBtn.classList.add("bg-red-600", "hover:bg-red-700");
-          registerBtn.classList.remove(
+          newRegisterBtn.disabled = false;
+          newRegisterBtn.classList.remove(
             "bg-slate-700",
             "hover:bg-slate-600",
             "bg-green-600",
             "hover:bg-green-700",
           );
-          registerBtn.innerHTML = '<i class="bi bi-x-lg"></i> Se désinscrire';
+          newRegisterBtn.classList.add("bg-red-600", "hover:bg-red-700");
+          newRegisterBtn.innerHTML =
+            '<i class="bi bi-x-lg"></i> Se désinscrire';
 
-          const newRegisterBtn = registerBtn.cloneNode(true);
-          registerBtn.parentNode.replaceChild(newRegisterBtn, registerBtn);
           newRegisterBtn.addEventListener("click", async () => {
             try {
               if (registerError) registerError.classList.add("hidden");
               const response = await fetch(
-                `/api/events/${eventId}/unregister`,
+                apiUrl(`/api/events/${eventId}/unregister`),
                 {
                   method: "POST",
                   headers: {
@@ -195,7 +205,6 @@ async function loadEventDetails() {
                 );
               }
 
-              // Recharger les détails de l'événement
               loadEventDetails();
             } catch (error) {
               console.error("Erreur:", error);
@@ -206,36 +215,39 @@ async function loadEventDetails() {
             }
           });
         } else {
-          registerBtn.classList.add("bg-green-600", "hover:bg-green-700");
-          registerBtn.classList.remove(
+          newRegisterBtn.disabled = false;
+          newRegisterBtn.classList.remove(
             "bg-red-600",
             "hover:bg-red-700",
             "bg-slate-700",
             "hover:bg-slate-600",
           );
-          registerBtn.innerHTML = '<i class="bi bi-pencil"></i> S\'inscrire';
+          newRegisterBtn.classList.add("bg-green-600", "hover:bg-green-700");
+          newRegisterBtn.innerHTML = '<i class="bi bi-pencil"></i> S\'inscrire';
 
-          registerBtn.addEventListener("click", async () => {
+          newRegisterBtn.addEventListener("click", async () => {
             try {
               if (registerError) registerError.classList.add("hidden");
-              const response = await fetch(`/api/events/${eventId}/register`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
+              const response = await fetch(
+                apiUrl(`/api/events/${eventId}/register`),
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    userId: currentUser.id,
+                    name: currentUser.name,
+                    email: currentUser.email,
+                  }),
                 },
-                body: JSON.stringify({
-                  userId: currentUser.id,
-                  name: currentUser.name,
-                  email: currentUser.email,
-                }),
-              });
+              );
 
               if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.error || "Erreur lors de l'inscription");
               }
 
-              // Recharger les détails de l'événement
               loadEventDetails();
             } catch (error) {
               console.error("Erreur:", error);
@@ -246,6 +258,38 @@ async function loadEventDetails() {
             }
           });
         }
+      }
+
+      const deleteBtn = document.getElementById("delete-btn");
+      if (deleteBtn && currentUser.id === event.userId) {
+        deleteBtn.classList.remove("hidden");
+
+        const newDeleteBtn = deleteBtn.cloneNode(true);
+        deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+
+        newDeleteBtn.addEventListener("click", async () => {
+          const confirmDelete = confirm(
+            "Êtes-vous sûr de vouloir supprimer cet événement ?",
+          );
+          if (!confirmDelete) return;
+
+          try {
+            const response = await fetch(apiUrl(`/api/events/${eventId}`), {
+              method: "DELETE",
+            });
+
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.error || "Erreur lors de la suppression");
+            }
+
+            window.location.href = "index.html";
+          } catch (error) {
+            alert(error.message);
+          }
+        });
+      } else if (deleteBtn) {
+        deleteBtn.classList.add("hidden");
       }
     }
   } catch (error) {

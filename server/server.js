@@ -1,3 +1,5 @@
+// Développé par Keni Mottin et Noah Bouzique
+
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -6,7 +8,6 @@ const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -52,9 +53,7 @@ function repairEventData(event) {
   }
 
   if (!Array.isArray(event.registrations)) {
-    console.warn(
-      `Réparation des registrations pour l'événement ${event.id}`,
-    );
+    console.warn(`Réparation des registrations pour l'événement ${event.id}`);
     event.registrations = [];
   }
 
@@ -184,6 +183,27 @@ api.post("/events", async (req, res) => {
   }
 });
 
+api.delete("/events/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const events = await readJSON(EVENTS_FILE);
+    const eventIndex = events.findIndex((e) => e.id === id);
+
+    if (eventIndex === -1) {
+      return res.status(404).json({ error: "Événement non trouvé" });
+    }
+
+    events.splice(eventIndex, 1);
+    await writeJSON(EVENTS_FILE, events);
+
+    console.log(`✅ Événement ${id} supprimé avec succès`);
+    res.json({ message: "Événement supprimé avec succès" });
+  } catch (error) {
+    console.error("❌ Erreur lors de la suppression:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 api.post("/events/:id/vote", async (req, res) => {
   try {
     const { userId } = req.body;
@@ -208,11 +228,10 @@ api.post("/events/:id/vote", async (req, res) => {
     }
 
     event.votes.push({ userId });
-
     events[eventIndex] = event;
 
     console.log(
-      `Vote ajouté pour l'événement ${event.id} par l'utilisateur ${userId}`,
+      `✅ Vote ajouté pour l'événement ${event.id} par l'utilisateur ${userId}`,
     );
     console.log(`   Votes actuels:`, JSON.stringify(event.votes));
 
@@ -260,12 +279,12 @@ api.post("/events/:id/register", async (req, res) => {
     await writeJSON(EVENTS_FILE, events);
 
     console.log(
-      `Inscription ajoutée pour l'événement ${event.id} par ${name || email || userId}`,
+      `✅ Inscription ajoutée pour l'événement ${event.id} par ${name || email || userId}`,
     );
 
     res.json({ ...event, registrationCount: event.registrations.length });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Erreur lors de l'inscription:", err);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
@@ -273,6 +292,11 @@ api.post("/events/:id/register", async (req, res) => {
 api.post("/events/:id/unregister", async (req, res) => {
   try {
     const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId requis" });
+    }
+
     const events = await readJSON(EVENTS_FILE);
     const eventIndex = events.findIndex((e) => e.id === req.params.id);
 
@@ -282,16 +306,30 @@ api.post("/events/:id/unregister", async (req, res) => {
 
     const event = repairEventData(events[eventIndex]);
 
+    const originalLength = event.registrations.length;
     event.registrations = event.registrations.filter(
       (r) => r.userId !== userId,
     );
 
+    if (event.registrations.length === originalLength) {
+      return res
+        .status(400)
+        .json({ error: "Vous n'êtes pas inscrit à cet événement" });
+    }
+
     events[eventIndex] = event;
     await writeJSON(EVENTS_FILE, events);
 
+    console.log(
+      `✅ Désinscription réussie pour l'événement ${event.id} par l'utilisateur ${userId}`,
+    );
+    console.log(
+      `   Inscriptions avant: ${originalLength}, après: ${event.registrations.length}`,
+    );
+
     res.json({ ...event, registrationCount: event.registrations.length });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Erreur lors de la désinscription:", err);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
@@ -324,6 +362,18 @@ ensureFiles().then(() => {
 
   const server = app.listen(PORT, IP, () => {
     console.log(`🚀 SERVEUR ACTIF sur [${IP}]:${PORT}`);
+    console.log(`\n📍 Routes disponibles:`);
+    console.log(`   POST   /api/auth/signup`);
+    console.log(`   POST   /api/auth/login`);
+    console.log(`   GET    /api/events`);
+    console.log(`   POST   /api/events`);
+    console.log(`   GET    /api/events/:id`);
+    console.log(`   DELETE /api/events/:id`);
+    console.log(`   POST   /api/events/:id/vote`);
+    console.log(`   POST   /api/events/:id/register`);
+    console.log(`   POST   /api/events/:id/unregister ✅`);
+    console.log(`   POST   /api/admin/repair`);
+    console.log(`   GET    /api/health\n`);
   });
 
   server.on("error", (err) => {
