@@ -1,256 +1,385 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const fs = require('fs').promises;
-const path = require('path');
+// Développé par Keni Mottin et Noah Bouzique
+
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const fs = require("fs").promises;
+const path = require("path");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('publics'));
 
-const DATA_FILE = path.join(__dirname, 'data', 'events.json');
-const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+const DATA_DIR = path.join(__dirname, "data");
+const EVENTS_FILE = path.join(DATA_DIR, "events.json");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
 
-async function readEvents() {
+async function ensureFiles() {
   try {
-    const data = await fs.readFile(DATA_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    return [];
-  }
-}
+    await fs.mkdir(DATA_DIR, { recursive: true });
 
-async function writeEvents(events) {
-  await fs.writeFile(DATA_FILE, JSON.stringify(events, null, 2));
-}
-
-
-async function readUsers() {
-  try {
-    const data = await fs.readFile(USERS_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    return [];
-  }
-}
-
-async function writeUsers(users) {
-  await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
-}
-
-async function findUserByEmail(email) {
-  const users = await readUsers();
-  return users.find(u => u.email === email);
-}
-
-
-app.post('/api/auth/signup', async (req, res) => {
-  try {
-    const { email, password, name } = req.body;
-
-    if (!email || !password || !name) {
-      return res.status(400).json({ error: 'Email, mot de passe et nom requis' });
+    try {
+      await fs.access(EVENTS_FILE);
+    } catch {
+      await fs.writeFile(EVENTS_FILE, "[]");
     }
 
-    const users = await readUsers();
-    const existingUser = users.find(u => u.email === email);
+    try {
+      await fs.access(USERS_FILE);
+    } catch {
+      await fs.writeFile(USERS_FILE, "[]");
+    }
+  } catch (err) {
+    console.error("Erreur initialisation fichiers:", err);
+    process.exit(1);
+  }
+}
 
-    if (existingUser) {
-      return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+async function readJSON(file) {
+  const data = await fs.readFile(file, "utf8");
+  return JSON.parse(data || "[]");
+}
+
+async function writeJSON(file, data) {
+  await fs.writeFile(file, JSON.stringify(data, null, 2));
+}
+
+function repairEventData(event) {
+  if (!Array.isArray(event.votes)) {
+    console.warn(`Réparation des votes pour l'événement ${event.id}`);
+    event.votes = [];
+  }
+
+  if (!Array.isArray(event.registrations)) {
+    console.warn(`Réparation des registrations pour l'événement ${event.id}`);
+    event.registrations = [];
+  }
+
+  return event;
+}
+
+const api = express.Router();
+
+api.post("/auth/signup", async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    const users = await readJSON(USERS_FILE);
+
+    if (users.find((u) => u.email === email)) {
+      return res.status(400).json({ error: "Email déjà utilisé" });
     }
 
     const newUser = {
       id: Date.now().toString(),
       email,
-      password, 
+      password,
       name,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     users.push(newUser);
-    await writeUsers(users);
+    await writeJSON(USERS_FILE, users);
 
-    const { password: _, ...userWithoutPassword } = newUser;
-    res.status(201).json(userWithoutPassword);
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
+    res.status(201).json({
+      id: newUser.id,
+      email: newUser.email,
+      name: newUser.name,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+api.post("/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    const users = await readJSON(USERS_FILE);
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email et mot de passe requis' });
-    }
-
-    const users = await readUsers();
-    const user = users.find(u => u.email === email && u.password === password);
+    const user = users.find(
+      (u) => u.email === email && u.password === password,
+    );
 
     if (!user) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+      return res.status(401).json({ error: "Identifiants invalides" });
     }
 
-    const { password: _, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
-app.get('/api/events', async (req, res) => {
+api.get("/events", async (req, res) => {
   try {
-    const events = await readEvents();
-    res.json(events);
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
+    const events = await readJSON(EVENTS_FILE);
+    res.json(
+      events.map((e) => {
+        const repaired = repairEventData(e);
+        return {
+          ...repaired,
+          registrationCount: repaired.registrations.length,
+        };
+      }),
+    );
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
-app.get('/api/events/:id', async (req, res) => {
+api.get("/events/:id", async (req, res) => {
   try {
-    const events = await readEvents();
-    const event = events.find(e => e.id === req.params.id);
-    if (event) {
-      res.json(event);
-    } else {
-      res.status(404).json({ error: 'Événement non trouvé' });
+    const events = await readJSON(EVENTS_FILE);
+    const event = events.find((e) => e.id === req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ error: "Événement non trouvé" });
     }
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
+
+    const repaired = repairEventData(event);
+    res.json({
+      ...repaired,
+      registrationCount: repaired.registrations.length,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
-app.post('/api/events', async (req, res) => {
+
+api.post("/events", async (req, res) => {
   try {
-    const { title, description, date, time, location, userId } = req.body;
+    const { title, description, date, time, location, createdBy } = req.body;
+    const events = await readJSON(EVENTS_FILE);
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Vous devez être connecté' });
-    }
-
-    const events = await readEvents();
-    
     const newEvent = {
       id: Date.now().toString(),
       title,
       description,
       date,
-      time: time || '09:00',
+      time: time || "09:00",
       location,
-      createdBy: userId,
-      votes: [], 
-      registrations: [], 
-      createdAt: new Date().toISOString()
+      createdBy,
+      votes: [],
+      registrations: [],
+      createdAt: new Date().toISOString(),
     };
-    
+
     events.push(newEvent);
-    await writeEvents(events);
+    await writeJSON(EVENTS_FILE, events);
+
     res.status(201).json(newEvent);
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
-app.post('/api/events/:id/vote', async (req, res) => {
+api.delete("/events/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const events = await readJSON(EVENTS_FILE);
+    const eventIndex = events.findIndex((e) => e.id === id);
+
+    if (eventIndex === -1) {
+      return res.status(404).json({ error: "Événement non trouvé" });
+    }
+
+    events.splice(eventIndex, 1);
+    await writeJSON(EVENTS_FILE, events);
+
+    console.log(`✅ Événement ${id} supprimé avec succès`);
+    res.json({ message: "Événement supprimé avec succès" });
+  } catch (error) {
+    console.error("❌ Erreur lors de la suppression:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+api.post("/events/:id/vote", async (req, res) => {
   try {
     const { userId } = req.body;
-    const eventId = req.params.id;
 
     if (!userId) {
-      return res.status(401).json({ error: 'Vous devez être connecté' });
+      return res.status(400).json({ error: "userId requis" });
     }
 
-    const events = await readEvents();
-    const eventIndex = events.findIndex(e => e.id === eventId);
-    
+    const events = await readJSON(EVENTS_FILE);
+    const eventIndex = events.findIndex((e) => e.id === req.params.id);
+
     if (eventIndex === -1) {
-      return res.status(404).json({ error: 'Événement non trouvé' });
+      return res.status(404).json({ error: "Événement non trouvé" });
     }
 
-    const hasVoted = events[eventIndex].votes.some(v => v.userId === userId);
-    if (hasVoted) {
-      return res.status(400).json({ error: 'Vous avez déjà voté pour cet événement' });
+    const event = repairEventData(events[eventIndex]);
+
+    if (event.votes.some((v) => v.userId === userId)) {
+      return res
+        .status(400)
+        .json({ error: "Vous avez déjà voté pour cet événement" });
     }
 
-    events[eventIndex].votes.push({ userId });
-    await writeEvents(events);
+    event.votes.push({ userId });
+    events[eventIndex] = event;
+
+    console.log(
+      `✅ Vote ajouté pour l'événement ${event.id} par l'utilisateur ${userId}`,
+    );
+    console.log(`   Votes actuels:`, JSON.stringify(event.votes));
+
+    await writeJSON(EVENTS_FILE, events);
 
     res.json({
-      ...events[eventIndex],
-      voteCount: events[eventIndex].votes.length
+      ...event,
+      registrationCount: event.registrations.length,
     });
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
+  } catch (err) {
+    console.error("❌ Erreur lors du vote:", err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
-
-
-app.post('/api/events/:id/register', async (req, res) => {
+api.post("/events/:id/register", async (req, res) => {
   try {
-    const { userId, email, name } = req.body;
-    const eventId = req.params.id;
+    const { userId, name, email } = req.body;
 
     if (!userId) {
-      return res.status(401).json({ error: 'Vous devez être connecté' });
+      return res.status(400).json({ error: "userId requis" });
     }
 
-    const events = await readEvents();
-    const eventIndex = events.findIndex(e => e.id === eventId);
-    
+    const events = await readJSON(EVENTS_FILE);
+    const eventIndex = events.findIndex((e) => e.id === req.params.id);
+
     if (eventIndex === -1) {
-      return res.status(404).json({ error: 'Événement non trouvé' });
+      return res.status(404).json({ error: "Événement non trouvé" });
     }
 
-    const isRegistered = events[eventIndex].registrations.some(r => r.userId === userId);
-    if (isRegistered) {
-      return res.status(400).json({ error: 'Vous êtes déjà inscrit à cet événement' });
+    const event = repairEventData(events[eventIndex]);
+
+    if (event.registrations.some((r) => r.userId === userId)) {
+      return res.status(400).json({ error: "Déjà inscrit" });
     }
 
-    events[eventIndex].registrations.push({ userId, email, name });
-    await writeEvents(events);
-
-    res.json({
-      ...events[eventIndex],
-      registrationCount: events[eventIndex].registrations.length
+    event.registrations.push({
+      userId,
+      name,
+      email,
+      registeredAt: new Date().toISOString(),
     });
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
+
+    events[eventIndex] = event;
+    await writeJSON(EVENTS_FILE, events);
+
+    console.log(
+      `✅ Inscription ajoutée pour l'événement ${event.id} par ${name || email || userId}`,
+    );
+
+    res.json({ ...event, registrationCount: event.registrations.length });
+  } catch (err) {
+    console.error("❌ Erreur lors de l'inscription:", err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
-app.delete('/api/events/:id/register', async (req, res) => {
+api.post("/events/:id/unregister", async (req, res) => {
   try {
     const { userId } = req.body;
-    const eventId = req.params.id;
 
     if (!userId) {
-      return res.status(401).json({ error: 'Vous devez être connecté' });
+      return res.status(400).json({ error: "userId requis" });
     }
 
-    const events = await readEvents();
-    const eventIndex = events.findIndex(e => e.id === eventId);
-    
+    const events = await readJSON(EVENTS_FILE);
+    const eventIndex = events.findIndex((e) => e.id === req.params.id);
+
     if (eventIndex === -1) {
-      return res.status(404).json({ error: 'Événement non trouvé' });
+      return res.status(404).json({ error: "Événement non trouvé" });
     }
 
-    events[eventIndex].registrations = 
-      events[eventIndex].registrations.filter(r => r.userId !== userId);
-    await writeEvents(events);
+    const event = repairEventData(events[eventIndex]);
 
-    res.json({
-      ...events[eventIndex],
-      registrationCount: events[eventIndex].registrations.length
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
+    const originalLength = event.registrations.length;
+    event.registrations = event.registrations.filter(
+      (r) => r.userId !== userId,
+    );
+
+    if (event.registrations.length === originalLength) {
+      return res
+        .status(400)
+        .json({ error: "Vous n'êtes pas inscrit à cet événement" });
+    }
+
+    events[eventIndex] = event;
+    await writeJSON(EVENTS_FILE, events);
+
+    console.log(
+      `✅ Désinscription réussie pour l'événement ${event.id} par l'utilisateur ${userId}`,
+    );
+    console.log(
+      `   Inscriptions avant: ${originalLength}, après: ${event.registrations.length}`,
+    );
+
+    res.json({ ...event, registrationCount: event.registrations.length });
+  } catch (err) {
+    console.error("❌ Erreur lors de la désinscription:", err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
-app.listen(PORT, () => {
-  console.log(`Serveur démarré sur http://localhost:${PORT}`);
+
+api.post("/admin/repair", async (req, res) => {
+  try {
+    const events = await readJSON(EVENTS_FILE);
+    const repairedEvents = events.map(repairEventData);
+    await writeJSON(EVENTS_FILE, repairedEvents);
+
+    res.json({
+      message: "Données réparées avec succès",
+      count: repairedEvents.length,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+api.get("/health", (req, res) => {
+  res.json({ status: "OK" });
+});
+
+app.use("/api", api);
+
+ensureFiles().then(() => {
+  const PORT = process.env.PORT || 3000;
+  const IP = process.env.IP || "::";
+
+  const server = app.listen(PORT, IP, () => {
+    console.log(`🚀 SERVEUR ACTIF sur [${IP}]:${PORT}`);
+    console.log(`\n📍 Routes disponibles:`);
+    console.log(`   POST   /api/auth/signup`);
+    console.log(`   POST   /api/auth/login`);
+    console.log(`   GET    /api/events`);
+    console.log(`   POST   /api/events`);
+    console.log(`   GET    /api/events/:id`);
+    console.log(`   DELETE /api/events/:id`);
+    console.log(`   POST   /api/events/:id/vote`);
+    console.log(`   POST   /api/events/:id/register`);
+    console.log(`   POST   /api/events/:id/unregister ✅`);
+    console.log(`   POST   /api/admin/repair`);
+    console.log(`   GET    /api/health\n`);
+  });
+
+  server.on("error", (err) => {
+    console.error("ERREUR SERVEUR :", err.message);
+    if (IP !== "0.0.0.0") {
+      app.listen(PORT, "0.0.0.0");
+    }
+  });
 });

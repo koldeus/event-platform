@@ -27,9 +27,9 @@ npm install
 npm start
 ```
 
-Le serveur démarre sur http://localhost:3000
+Le serveur démarre sur 
 
-4. Ouvrez votre navigateur et accédez à http://localhost:3000
+4. Ouvrez votre navigateur et accédez à 
 
 
 ## Utilisation

@@ -59,31 +59,13 @@
         "userId": "1770712769090"
       }
     ],
-    "registrations": [],
+    "registrations": [
+      {
+        "userId": "1770712769090",
+        "email": "kenimottin@gmail.com",
+        "name": "Kéni Mottin"
+      }
+    ],
     "createdAt": "2026-02-10T11:32:15.525Z"
-  },
-  {
-    "id": "1770723204984",
-    "title": "Evenement . fr",
-    "description": "Evenement . fr",
-    "date": "2026-02-16",
-    "time": "14:33",
-    "location": "Amboise",
-    "createdBy": "1770712769090",
-    "votes": [],
-    "registrations": [],
-    "createdAt": "2026-02-10T11:33:24.984Z"
-  },
-  {
-    "id": "1770724417487",
-    "title": "gnhggh;y",
-    "description": "dykf;yf  f",
-    "date": "2026-02-18",
-    "time": "12:53",
-    "location": "Blois lycée Camille claudelle",
-    "createdBy": "1770712769090",
-    "votes": [],
-    "registrations": [],
-    "createdAt": "2026-02-10T11:53:37.488Z"
   }
 ]
